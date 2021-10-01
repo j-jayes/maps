@@ -1,0 +1,45 @@
+---
+title: "ames-map"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(AmesHousing)
+library(leaflet)
+```
+
+## Purpose
+
+Make a map of the ames housing dataset to show what could be useful with the leaflet package.
+
+```{r}
+df <- AmesHousing::ames_raw %>% 
+    janitor::clean_names()
+
+df_geo = AmesHousing::ames_geo %>% 
+    janitor::clean_names()
+
+df = df %>% 
+    inner_join(df_geo)
+
+df %>% 
+    ggplot(aes(latitude, longitude, colour = sale_price)) +
+    geom_point()
+
+
+```
+
+
+```{r}
+df %>% 
+    select(latitude, longitude) %>% 
+    leaflet() %>% 
+    addTiles() %>% 
+    addCircleMarkers(lng = ~ longitude, lat = ~latitude)
+```
+
