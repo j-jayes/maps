@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(AmesHousing)
 library(leaflet)
+library(scales)
 ```
 
 ## Purpose
@@ -30,10 +31,46 @@ df = df %>%
 df %>% 
     ggplot(aes(latitude, longitude, colour = sale_price)) +
     geom_point()
-
-
 ```
 
+## Cleaning 
+
+```{r}
+df %>% 
+    skimr::skim()
+```
+
+rm alley
+
+```{r}
+df
+```
+
+
+### Questions
+
+What is ms_sub_class?
+
+```{r}
+df %>% 
+    count(land_contour)
+
+df <- df %>% 
+    mutate(across(ms_sub_class, parse_number))
+```
+
+## Spend my data budget
+
+```{r}
+split <- initial_split(df, strata = sale_price)
+df_train <- training(split)
+df_test <- testing(split)
+```
+
+
+
+
+### Leaflet map
 
 ```{r}
 df %>% 
@@ -43,3 +80,61 @@ df %>%
     addCircleMarkers(lng = ~ longitude, lat = ~latitude)
 ```
 
+## wHAT FEATURES ARE ASSOCIATED WITH HIGH PRICES?
+
+### Desc stats
+
+```{r}
+library(ggridges)
+
+df %>% 
+    ggplot(aes(sale_price, fill = neighborhood)) +
+    geom_density() +
+    scale_x_log10(labels = dollar_format())
+
+df %>% 
+    ggplot(aes(sale_price, lot_frontage)) +
+    geom_point() +
+    geom_smooth() +
+    scale_x_log10(labels = dollar_format())
+
+plot_price <- function(var, char) {
+  df %>%
+    # mutate({{ char }} = fct_lump({{ char }}, 9)) %>%
+    ggplot(aes(x = sale_price, y = {{ var }}, colour = {{ char }})) +
+    geom_point() +
+    scale_x_log10(labels = dollar_format())
+}
+
+plot_price(lot_area, lot_shape)
+```
+
+```{r}
+plot_price_cat <- function(var) {
+  df %>%
+    mutate({{ var }} = fct_reorder({{ char }}, sale_price)) %>%
+    ggplot(aes(x = sale_price, y = factor({{ var }}), fill = {{ var }})) +
+    geom_density_ridges() +
+    scale_x_log10(labels = dollar_format())
+}
+
+plot_price_cat(lot_shape)
+```
+
+### Maybe PCA?
+
+## Modelling
+
+```{r}
+library(tidymodels)
+
+basic_rec <- recipe(sale_price ~ ., data = df) %>% 
+    update_role(c(order, pid), new_role = "id")
+
+lin_rec <- basic_rec %>% 
+    step_log(sale_price) %>% 
+    step_mutate(across(where(is.character), as.factor)) %>% 
+    step_other(all_numeric_predictors())
+```
+
+### 
