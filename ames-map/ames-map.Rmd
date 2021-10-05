@@ -28,9 +28,11 @@ df_geo = AmesHousing::ames_geo %>%
 df = df %>% 
     inner_join(df_geo)
 
-df %>% 
-    ggplot(aes(latitude, longitude, colour = sale_price)) +
-    geom_point()
+df %>%
+  ggplot(aes(latitude, longitude, colour = sale_price)) +
+  geom_point() +
+  scale_colour_gradient2(labels = dollar_format(), trans = "sqrt")
+
 ```
 
 ## Cleaning 
@@ -38,12 +40,51 @@ df %>%
 ```{r}
 df %>% 
     skimr::skim()
+
+df <- df %>% 
+    select(-c(alley, fireplace_qu, pool_qc, fence, misc_feature))
 ```
 
 rm alley
 
 ```{r}
-df
+df %>%
+  ggplot(aes(yr_sold, sale_price, group = yr_sold)) +
+  geom_boxplot() +
+  scale_y_log10(labels = dollar_format())
+```
+
+The effect of 2008 isn't as pronounced as I thought it might be? 
+
+```{r}
+library(lubridate)
+library(glue)
+
+df %>%
+  mutate(date_sold = dmy(glue("01-{mo_sold}-{yr_sold}"))) %>%
+  ggplot(aes(date_sold, sale_price, group = date_sold, fill = factor(yr_sold))) +
+  geom_boxplot() +
+  scale_y_log10(labels = dollar_format())
+```
+
+Here we can see that there is a relationship between price and building type, but also that some building types are introduced later, like townhouses. 
+
+```{r}
+df %>% 
+    ggplot(aes(sale_price, year_built, colour = bldg_type)) +
+    geom_point(alpha = .5) +
+    geom_smooth(se = F, cex = 2) +
+    scale_x_log10(labels = dollar_format())
+```
+
+It seems that the overall condition and quality scores are in some ways censored. missing lots of stuff in the eight point range. It's either great or bad.
+
+```{r}
+df %>%
+  ggplot(aes(overall_qual, overall_cond, fill = sale_price)) +
+  geom_tile() +
+  scale_fill_gradient2(labels = dollar_format(), trans = "sqrt")
+
 ```
 
 
@@ -53,7 +94,7 @@ What is ms_sub_class?
 
 ```{r}
 df %>% 
-    count(land_contour)
+    count(condition_1)
 
 df <- df %>% 
     mutate(across(ms_sub_class, parse_number))
@@ -65,6 +106,8 @@ df <- df %>%
 split <- initial_split(df, strata = sale_price)
 df_train <- training(split)
 df_test <- testing(split)
+
+folds <- vfold_cv(df_train, strata = sale_price)
 ```
 
 
@@ -128,13 +171,50 @@ plot_price_cat(lot_shape)
 ```{r}
 library(tidymodels)
 
-basic_rec <- recipe(sale_price ~ ., data = df) %>% 
-    update_role(c(order, pid), new_role = "id")
+basic_rec <- recipe(sale_price ~ ., data = df_train) %>% 
+    update_role(order, pid, new_role = "id")
 
 lin_rec <- basic_rec %>% 
     step_log(sale_price) %>% 
+    step_mutate(date_sold = dmy(glue("01-{mo_sold}-{yr_sold}"))) %>%
+    step_rm(mo_sold, yr_sold) %>% 
     step_mutate(across(where(is.character), as.factor)) %>% 
-    step_other(all_numeric_predictors())
+    step_other(all_nominal_predictors(), threshold = 0.05)
 ```
 
-### 
+### basic glmnet
+
+```{r}
+# usemodels::use_glmnet(sale_price ~ ., data = df_train)
+
+glmnet_recipe <- lin_rec %>%
+  step_meanimpute(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors()) %>%
+  step_naomit(all_nominal_predictors())
+
+
+# glmnet_recipe %>% 
+#     prep() %>% bake(new_data = NULL) %>% view
+
+glmnet_spec <- 
+  linear_reg(penalty = tune(), mixture = tune()) %>% 
+  set_mode("regression") %>% 
+  set_engine("glmnet") 
+
+glmnet_workflow <- 
+  workflow() %>% 
+  add_recipe(glmnet_recipe) %>% 
+  add_model(glmnet_spec) 
+
+glmnet_grid <- tidyr::crossing(penalty = 10^seq(-6, -1, length.out = 20), 
+                               mixture = c(
+  0.05,
+  0.2, 0.4, 0.6, 0.8, 1
+))
+
+glmnet_tune <- 
+  tune_grid(glmnet_workflow, resamples = folds, grid = glmnet_grid) 
+
+```
+
