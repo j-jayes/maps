@@ -33,7 +33,9 @@ Maybe a third tabset panel with the relationship between continuous variables.
 
 ## Process
 
-I kinda have to do the modelling first so that I can see what is important to put in the leaflet plot? No, perhaps I do it the other way around - with 
+I kinda have to do the modelling first so that I can see what is important to put in the leaflet plot? No, perhaps I do it the other way around - with the map first and then come back with the important variable.
+
+## Reading in data.
 
 ```{r}
 df <- AmesHousing::ames_raw %>% 
@@ -46,6 +48,8 @@ df = df %>%
     inner_join(df_geo)
 ```
 
+## EDA
+
 ```{r}
 library(skimr)
 
@@ -53,19 +57,19 @@ df %>%
   skim()
 ```
 
-
+Map in ggplot. Showing price.
 
 ```{r}
 df %>% 
-    ggplot(aes(x = latitude, y = longitude, colour = sale_price)) +
+    ggplot(aes(x = longitude, y = latitude, colour = sale_price)) +
     geom_point() +
     scale_color_gradient2(low = "blue", high = "red", mid = 4e5,
                           labels = scales::dollar_format())
+```
 
-df %>% 
-  ggplot(aes(sale_price)) + 
-  geom_histogram()
+Relationship between year built and price. We can see that newer buidlings sell for more.
 
+```{r}
 df %>% 
   ggplot(aes(year_built, sale_price)) +
   geom_point() +
@@ -73,16 +77,57 @@ df %>%
   scale_y_log10(labels = scales::dollar_format()) +
   labs(x = "Year built",
        y = "Sale price")
+```
 
+What types of houses are built at different times?
+
+```{r}
+df %>% 
+  ggplot(aes(year_built, fill = bldg_type)) +
+  geom_density() +
+  facet_wrap(~ bldg_type, nrow = 5) +
+  theme(legend.position = "none")
 ```
 
 
 ```{r}
-df %>% 
-    select(latitude, longitude) %>% 
-    leaflet() %>% 
-    addTiles() %>% 
-    addCircleMarkers(lng = ~ longitude, lat = ~latitude) 
+df %>%
+  mutate(
+    transformed_price = log2(sale_price),
+    price_color = colorNumeric(c("blue", "red"), sale_price)(sale_price)
+  ) %>%
+  gather(
+    key, value,
+    pid,
+    sale_price,
+    year_built,
+    neighborhood,
+    lot_area,
+    overall_cond,
+    overall_qual
+  ) %>%
+  mutate(
+    key = str_to_title(str_replace_all(key, "_", " ")),
+    key = paste0("<b>", key, "</b>")
+  ) %>%
+  replace_na(list(value = "Unknown")) %>%
+  nest(data = c(key, value)) %>%
+  mutate(html = map(data,
+    knitr::kable,
+    format = "html",
+    escape = FALSE,
+    col.names = c("", "")
+  )) %>%
+  leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lat = ~latitude,
+    lng = ~longitude,
+    color = ~price_color,
+    popup = ~html,
+    radius = 2
+  ) %>%
+  addMeasure()
 ```
 
 ### Descriptives
@@ -115,6 +160,91 @@ df %>%
   )
 ```
 
+
+### Shiny components
+```{r}
+
+df %>% 
+  select(where(is.numeric)) %>%
+  gather(key, value, -sale_price) %>% 
+  filter(key == "garage_area") %>% 
+  ggplot(aes(value, sale_price)) +
+  geom_point(alpha = .5, colour = "midnightblue") +
+  geom_smooth() +
+  scale_x_log10(labels = number_format()) +
+  scale_y_log10(labels = dollar_format()) +
+  labs(x = glue("lot_area"),
+       y = "Sale price")
+```
+
+
+```{r}
+# normally dist vars
+df %>% 
+  select(lot_frontage,
+         lot_area,
+         year_built,
+         year_remod_add,
+         gr_liv_area)
+
+# density plot ones.
+df %>% 
+  select(overall_qual,
+         overall_cond,
+         bsmt_full_bath,
+         full_bath,
+         half_bath,
+         bedroom_abv_gr,
+         kitchen_abv_gr,
+         tot_rms_abv_grd,
+         fireplaces,
+         garage_cars)
+```
+
+
+```{r}
+df %>% 
+  select(where(is.character)) %>% 
+  skimr::skim()
+
+df %>% 
+  count(lot_shape)
+
+# character ones to show as density plots
+# need to have an if else that has is.numeric => no reordering but if is.character, then reorder them.
+df %>% 
+  select(ms_zoning,
+         lot_shape)
+```
+
+
+```{r}
+df %>% 
+  select(where(is.numeric)) %>% 
+  gather(key, value, -sale_price) %>% 
+  filter(key == "lot_area") %>% 
+  ggplot(aes(value, sale_price)) +
+  geom_point(alpha = .5, colour = "midnightblue") +
+  geom_smooth() +
+  scale_x_log10(labels = number_format()) +
+  scale_y_log10(labels = dollar_format()) +
+  labs(x = glue("lot_area"),
+       y = "Sale price")
+```
+
+```{r}
+library(ggridges)
+
+df %>%
+  ggplot(aes(sale_price, y = factor(garage_cars), fill = factor(garage_cars))) +
+  geom_density_ridges() +
+  scale_x_log10(labels = dollar_format()) +
+  theme(legend.position = "none") +
+  labs(
+    x = "Sale price",
+    y = glue("Overall condition")
+  )
+```
 
 ### Modelling
 
