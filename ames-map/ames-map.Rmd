@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(AmesHousing)
 library(leaflet)
+
+theme_set(theme_light())
 ```
 
 ## Purpose
@@ -26,11 +28,26 @@ df_geo = AmesHousing::ames_geo %>%
 
 df = df %>% 
     inner_join(df_geo)
+```
+
+```{r}
+library(skimr)
 
 df %>% 
-    ggplot(aes(latitude, longitude, colour = sale_price)) +
-    geom_point()
+  skim()
+```
 
+
+
+```{r}
+df %>% 
+    ggplot(aes(x = latitude, y = longitude, colour = sale_price)) +
+    geom_point() +
+    scale_color_gradient2()
+
+df %>% 
+  ggplot(aes(sale_price)) + 
+  geom_histogram()
 
 ```
 
@@ -40,6 +57,21 @@ df %>%
     select(latitude, longitude) %>% 
     leaflet() %>% 
     addTiles() %>% 
-    addCircleMarkers(lng = ~ longitude, lat = ~latitude)
+    addCircleMarkers(lng = ~ longitude, lat = ~latitude) 
+```
+
+### Descriptives
+
+```{r}
+df %>% count(utilities, sort = T)
+df %>% count(ms_zoning, sort = T)
+df %>% count(overall_qual, sort = T)
+df %>% count(overall_cond, sort = T)
+df %>% count(house_style, sort = T)
+df %>% count(roof_style, sort = T)
+
+
+
+df %>% skimr::skim()
 ```
 
