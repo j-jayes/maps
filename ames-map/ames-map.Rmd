@@ -17,7 +17,23 @@ theme_set(theme_light())
 
 ## Purpose
 
-Make a map of the ames housing dataset to show what could be useful with the leaflet package.
+Make a map of the Ames, Iowa housing dataset to show what could be useful with the leaflet package.
+
+## Planning
+
+I want to have three pages:
+
+1. House explorer - map with the leaflet package. Each house is on the map with an HTML popup that shows features about the house. Can have a slider to select years.
+
+2. Data explorer - A page with a tabset panel, showing categorical and continuous variables relationship with house price on the y axis in the case of continuous. For continuous - I want to have 
+
+Maybe a third tabset panel with the relationship between continuous variables.
+
+3. An explanation of the most important variables that determine house price. First a simple penalized logistic regression model. Then an xgboost model with the performance metrics as well as the variable importance plots.
+
+## Process
+
+I kinda have to do the modelling first so that I can see what is important to put in the leaflet plot? No, perhaps I do it the other way around - with 
 
 ```{r}
 df <- AmesHousing::ames_raw %>% 
@@ -43,11 +59,20 @@ df %>%
 df %>% 
     ggplot(aes(x = latitude, y = longitude, colour = sale_price)) +
     geom_point() +
-    scale_color_gradient2()
+    scale_color_gradient2(low = "blue", high = "red", mid = 4e5,
+                          labels = scales::dollar_format())
 
 df %>% 
   ggplot(aes(sale_price)) + 
   geom_histogram()
+
+df %>% 
+  ggplot(aes(year_built, sale_price)) +
+  geom_point() +
+  geom_smooth() +
+  scale_y_log10(labels = scales::dollar_format()) +
+  labs(x = "Year built",
+       y = "Sale price")
 
 ```
 
@@ -73,5 +98,30 @@ df %>% count(roof_style, sort = T)
 
 
 df %>% skimr::skim()
+```
+
+### Desc stats
+
+```{r}
+df %>%
+  ggplot(aes(overall_qual,
+    overall_cond,
+    fill = sale_price
+  )) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = 4e5,
+    labels = scales::dollar_format()
+  )
+```
+
+
+### Modelling
+
+```{r}
+library(tidymodels)
+spl <- initial_split(df, strata = sale_price)
+
+df_train <- 
 ```
 
