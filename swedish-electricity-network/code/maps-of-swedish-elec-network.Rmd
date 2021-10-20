@@ -1,0 +1,70 @@
+---
+title: "Untitled"
+author: "JJayes"
+date: "05/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+```
+
+### Ingest data
+
+#### Lediningar - lines
+
+```{r}
+library(here)
+
+map_file <- here("swedish-electricity-network", "maps", "SVK_LEDNINGAR.shp")
+
+library(sf)
+
+map <- st_read(map_file)
+```
+
+```{r}
+map %>% 
+    ggplot() +
+    geom_sf()
+```
+
+#### STATIONER.shp
+
+STATIONS
+
+```{r}
+
+map_file <- here("swedish-electricity-network", "maps", "STATIONER.shp")
+map <- st_read(map_file)
+map %>% 
+    ggplot() +
+    geom_sf()
+
+```
+
+#### STATIONSOMRÅDEN.shp
+
+STATION AREAS
+
+```{r}
+map_file <- here("swedish-electricity-network", "maps", "STATIONSOMRÅDEN.shp")
+map <- st_read(map_file)
+map %>% 
+    ggplot() +
+    geom_sf()
+```
+
+#### SVK_STOLPAR.shp
+
+POSTS
+
+```{r}
+map_file <- here("swedish-electricity-network", "maps", "SVK_STOLPAR.shp")
+map <- st_read(map_file)
+map %>% 
+    ggplot() +
+    geom_sf()
+```
+
