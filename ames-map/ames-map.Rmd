@@ -11,6 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(AmesHousing)
 library(leaflet)
+library(here)
+library(scales)
+library(glue)
 
 theme_set(theme_light())
 ```
@@ -38,14 +41,16 @@ I kinda have to do the modelling first so that I can see what is important to pu
 ## Reading in data.
 
 ```{r}
-df <- AmesHousing::ames_raw %>% 
-    janitor::clean_names()
+# df <- AmesHousing::ames_raw %>% 
+#     janitor::clean_names()
+# 
+# df_geo = AmesHousing::ames_geo %>% 
+#     janitor::clean_names()
+# 
+# df = df %>% 
+#     inner_join(df_geo)
 
-df_geo = AmesHousing::ames_geo %>% 
-    janitor::clean_names()
-
-df = df %>% 
-    inner_join(df_geo)
+df <- read_rds(here("ames-map", "data", "ames-data.rds"))
 ```
 
 ## EDA
@@ -214,7 +219,17 @@ df %>%
 # need to have an if else that has is.numeric => no reordering but if is.character, then reorder them.
 df %>% 
   select(ms_zoning,
-         lot_shape)
+         lot_shape,
+         bldg_type,
+         house_style,
+         roof_style,
+         exterior_1st,
+         foundation,
+         exter_qual,
+         exter_cond)
+
+df %>% 
+    count(exterior_1st)
 ```
 
 
@@ -236,7 +251,7 @@ df %>%
 library(ggridges)
 
 df %>%
-  ggplot(aes(sale_price, y = factor(garage_cars), fill = factor(garage_cars))) +
+  ggplot(aes(sale_price, y = factor(exterior_1st), fill = factor(exterior_1st))) +
   geom_density_ridges() +
   scale_x_log10(labels = dollar_format()) +
   theme(legend.position = "none") +
@@ -244,6 +259,38 @@ df %>%
     x = "Sale price",
     y = glue("Overall condition")
   )
+```
+
+### Check out this lit function for plotting sale price by a factor!!
+
+```{r}
+plot_ridge <- function(var) {
+  # this enquotes the variable to use it in the dplyr verbs that follow.
+  var <- enquo(var)
+
+  # this creates a label for the y-axis
+  var_str <- enquo(var) %>%
+    as_label() %>%
+    str_replace_all(., "_", " ") %>%
+    str_to_title()
+  # here we make the plot
+  df %>%
+    mutate(
+      !!var := fct_lump(!!var, 9),
+      !!var := fct_reorder(!!var, sale_price)
+    ) %>%
+    ggplot(aes(sale_price, y = !!var, fill = !!var)) +
+    geom_density_ridges() +
+    scale_x_log10(labels = dollar_format()) +
+    theme(legend.position = "none") +
+    labs(
+      x = "Sale price (log scale)",
+      y = glue("{var_str}"),
+      title = glue("Distribution of sale price by {var_str}")
+    )
+}
+
+plot_ridge(exter_cond)
 ```
 
 ### Modelling

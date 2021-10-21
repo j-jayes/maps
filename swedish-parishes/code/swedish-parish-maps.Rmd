@@ -1,0 +1,45 @@
+---
+title: "swedish-parish-maps"
+author: "JJayes"
+date: "06/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+library(here)
+
+map_file <- here("swedish-parishes", "kommun shapefiles", "Kommun_Sweref99TM_region.shp")
+```
+
+### Map data
+
+```{r}
+library(sf)
+library(ggiraph)
+
+map <- st_read(map_file)
+
+gg_iraph_map <- map %>% 
+    ggplot() +
+    geom_sf_interactive(aes(tooltip = KnNamn)) +
+    theme_void()
+
+girafe(
+  ggobj = gg_iraph_map,
+  width_svg = 8,
+  height_svg = 4,
+  options = list(
+    # opts_tooltip(css = tooltip_css, delay_mouseover = 0, delay_mouseout = 0),
+    opts_hover_inv(css = "opacity:0.1;"),
+    opts_hover(css = "stroke-width:2;")
+  )
+)
+
+    
+```
+
