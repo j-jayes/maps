@@ -1,0 +1,13 @@
+name: ames-house-explorer
+title: ames-house-explorer
+username:
+account: jonathan-jayes
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4925458
+bundleId: 5163035
+url: https://jonathan-jayes.shinyapps.io/ames-house-explorer/
+when: 1634831036.13057
+lastSyncTime: 1634831036.13057
+asMultiple: FALSE
+asStatic: FALSE
