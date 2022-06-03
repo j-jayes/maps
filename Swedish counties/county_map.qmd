@@ -1,0 +1,101 @@
+---
+title: "Old Swedish Counties"
+format: html
+---
+
+# Purpose
+
+Map the Swedish counties with the shapefile from Kerstin.
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+library(here)
+
+map_file <- here("Swedish counties", "kartfiler", "ln74_96bj_region.shp")
+```
+
+### Map data
+
+```{r}
+library(sf)
+library(ggiraph)
+
+map <- st_read(map_file)
+
+map <- map %>% 
+    janitor::clean_names() %>% 
+    rename(lan_code = lnkod,
+           lan_name_error = lnnamn) %>% 
+    mutate(lan_code = as.numeric(lan_code))
+```
+
+We need to match the name of the county to the code because the strings are throwing an error due to encoding of Swedish letters
+
+```{r}
+map %>% 
+    as_tibble() %>% 
+    select(LNNAMN, LNKOD) %>% view
+```
+
+They count from 1, 3, 4, 5, 6. Skipping 2, lol!
+
+```{r}
+lan_names <- tibble(lan_code = c(1, 3:25),
+                    lan_name = c(
+                        "Stockholms",
+                        "Uppsala",
+                        "Södermanlands",
+                        "Östergötlands",
+                        "Jönköpings",
+                        "Kronobergs",
+                        "Kalmar",
+                        "Gotlands",
+                        "Blekinge",
+                        "Kristianstads",
+                        "Malmöhus",
+                        "Hallands",
+                        "Göteborgs och Bohus",
+                        "Älvsborgs",
+                        "Skaraborgs",
+                        "Värmlands",
+                        "Örebro",
+                        "Västmanlands",
+                        "Kopparbergs",
+                        "Gävleborgs",
+                        "Västernorrlands",
+                        "Jämtlands",
+                        "Västerbottens",
+                        "Norrbottens"
+                    ))
+```
+
+
+```{r}
+map <- map %>% 
+    inner_join(lan_names)
+
+# map %>% write_rds(here::here("Swedish counties", "county_map.rds"))
+
+gg_iraph_map <- map %>% 
+    ggplot() +
+    geom_sf_interactive(aes(tooltip = lan_name)) +
+    theme_void()
+
+girafe(
+  ggobj = gg_iraph_map,
+  width_svg = 8,
+  height_svg = 4,
+  options = list(
+    # opts_tooltip(css = tooltip_css, delay_mouseover = 0, delay_mouseout = 0),
+    opts_hover_inv(css = "opacity:0.1;"),
+    opts_hover(css = "stroke-width:2;")
+  )
+)
+
+    
+```
+

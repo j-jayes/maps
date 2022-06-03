@@ -1,0 +1,60 @@
+---
+title: "parish_map_prep"
+format: html
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+library(here)
+
+map_file <- here("swedish-parishes", "parish shapefiles", "forsamlingar_2021-01-01.shp")
+```
+
+### Map data
+
+```{r}
+library(sf)
+library(ggiraph)
+
+map <- st_read(map_file)
+
+map <- map %>% 
+    janitor::clean_names()
+```
+
+
+```{r}
+parishes <- map %>% 
+    as_tibble() %>% 
+    select(namn)
+
+# parishes %>% write_rds(here("swedish-parishes", "parish shapefiles", "forsamlingar_names.rds"))
+```
+
+```{r}
+
+# map %>% write_rds(here::here("swedish-parishes", "kommun shapefiles", "kommun_map.rds"))
+
+gg_iraph_map <- map %>% 
+    ggplot() +
+    geom_sf_interactive(aes(tooltip = namn)) +
+    theme_void()
+
+girafe(
+  ggobj = gg_iraph_map,
+  width_svg = 8,
+  height_svg = 4,
+  options = list(
+    # opts_tooltip(css = tooltip_css, delay_mouseover = 0, delay_mouseout = 0),
+    opts_hover_inv(css = "opacity:0.1;"),
+    opts_hover(css = "stroke-width:2;")
+  )
+)
+
+    
+```
+

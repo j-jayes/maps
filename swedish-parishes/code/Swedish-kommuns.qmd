@@ -1,0 +1,55 @@
+---
+title: "Swedish kommuns"
+format: html
+---
+
+# Purpose
+
+Map the Swedish counties with the shapefile from Kerstin.
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+library(here)
+
+map_file <- here("swedish-parishes", "kommun shapefiles", "Kommun_Sweref99TM_region.shp")
+```
+
+### Map data
+
+```{r}
+library(sf)
+library(ggiraph)
+
+map <- st_read(map_file)
+
+map <- map %>% 
+    janitor::clean_names()
+```
+
+```{r}
+
+# map %>% write_rds(here::here("swedish-parishes", "kommun shapefiles", "kommun_map.rds"))
+
+gg_iraph_map <- map %>% 
+    ggplot() +
+    geom_sf_interactive(aes(tooltip = kn_namn)) +
+    theme_void()
+
+girafe(
+  ggobj = gg_iraph_map,
+  width_svg = 8,
+  height_svg = 4,
+  options = list(
+    # opts_tooltip(css = tooltip_css, delay_mouseover = 0, delay_mouseout = 0),
+    opts_hover_inv(css = "opacity:0.1;"),
+    opts_hover(css = "stroke-width:2;")
+  )
+)
+
+    
+```
+
